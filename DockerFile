@@ -1,33 +1,18 @@
-hereFROM node:18-slim
+FROM node:18-slim
 
-# Install Python, FFmpeg and yt-dlp
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3 \
-    ffmpeg \
-    curl \
-    ca-certificates && \
-    curl -L \
-    https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-    -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y python3 python3-pip ffmpeg curl && \
+    apt-get clean
+
+# Install yt-dlp with Railway workaround
+RUN if [ ! -z "$RAILWAY_STATIC_URL" ]; then \
+      pip3 install --no-cache-dir yt-dlp; \
+    fi
 
 WORKDIR /app
-
-# Install Node dependencies
 COPY package*.json ./
-
-RUN npm install --omit=dev
-
-# Copy application
+RUN npm install
 COPY . .
 
-# Production configuration
-ENV NODE_ENV=production
-ENV PORT=8080
-ENV TEMP_DIR=/tmp/sntklipx
-
-EXPOSE 8080
-
+EXPOSE 3000
 CMD ["npm", "start"]
