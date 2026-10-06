@@ -1,4 +1,4 @@
-const express = require('express');
+hereconst express = require('express');
 const cors = require('cors');
 const { exec } = require('child_process');
 const fs = require('fs');
@@ -7,8 +7,11 @@ const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
+app.use(express.json()); // Needed for POST requests
+app.use(express.urlencoded({ extended: true }));
 
 const tempDir = '/tmp';
+
 function runYtDlp(args) {
   return new Promise((resolve, reject) => {
     exec(`yt-dlp ${args.join(' ')}`, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
@@ -18,18 +21,43 @@ function runYtDlp(args) {
   });
 }
 
+// 1. Health check
 app.get('/', (req, res) => res.send('sntklipx API running'));
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-app.get('/api/info', async (req, res) => {
+// 2. Inspect endpoint (V0 expects this instead of /api/info)
+app.get('/api/inspect', async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'Missing URL' });
   try {
     const out = await runYtDlp(['-J', '--no-playlist', `"${url}"`]);
     const info = JSON.parse(out);
-    res.json({ title: info.title, thumbnail: info.thumbnail, duration: info.duration });
-  } catch (e) { res.status(500).json({ error: 'Failed' }); }
+    res.json({ 
+      title: info.title, 
+      thumbnail: info.thumbnail, 
+      duration: info.duration,
+      uploader: info.uploader 
+    });
+  } catch (e) { res.status(500).json({ error: 'Failed to inspect' }); }
 });
 
+// 3. POST /api/inspect (V0 might use this)
+app.post('/api/inspect', async (req, res) => {
+  const url = req.body?.url || req.query?.url;
+  if (!url) return res.status(400).json({ error: 'Missing URL' });
+  try {
+    const out = await runYtDlp(['-J', '--no-playlist', `"${url}"`]);
+    const info = JSON.parse(out);
+    res.json({ 
+      title: info.title, 
+      thumbnail: info.thumbnail, 
+      duration: info.duration,
+      uploader: info.uploader 
+    });
+  } catch (e) { res.status(500).json({ error: 'Failed to inspect' }); }
+});
+
+// 4. Download endpoint
 app.get('/api/download', async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'Missing URL' });
