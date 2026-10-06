@@ -1,9 +1,11 @@
 // .railway/railway.ts
-import { defineRailwayConfig } from 'railway';
+import { defineRailway, service } from 'railway/iac';
 
-export default defineRailwayConfig({
-  build: {
-    builder: 'DOCKERFILE',
-    dockerfilePath: 'Dockerfile',
-  },
+export default defineRailway(() => {
+  const api = service('sntklipx-api', {
+    build: {
+      builder: 'DOCKERFILE',
+      dockerfilePath: 'Dockerfile',
+    },
+  });
 });
